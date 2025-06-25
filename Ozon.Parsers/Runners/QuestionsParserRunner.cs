@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Bl.Common.Configs;
 using Bl.Common.DTOs;
+using Bl.Common.Enum;
 
 namespace Ozon.Parsers.Runners
 {
@@ -15,6 +16,7 @@ namespace Ozon.Parsers.Runners
             var parser = serviceProvider.GetRequiredService<IParserForOzonSellerService>();
             var dataStore = serviceProvider.GetRequiredService<IQuestionDataStoreBl>();
             var newDataRepository = serviceProvider.GetRequiredService<INewDataRepositoryBl>();
+            var dateLimitBl = serviceProvider.GetRequiredService<IParserDateLimitBl>();
 
             var batchData = new List<InTopicModelDto<QuestionRecord>>();
 
@@ -22,7 +24,7 @@ namespace Ozon.Parsers.Runners
 
             int iterationCount = 0;
             DateOnly startDate = DateOnly.FromDateTime(DateTime.Today);
-            DateOnly stopDate = new DateOnly(2022, 4, 28);
+            var stopDate = dateLimitBl.GetStopDateAsync(ParserType.QuestionsParserApp.ToString(), cancellationToken).GetAwaiter().GetResult() ?? new DateOnly(2022, 4, 28);
             TimeOnly stopTime = new TimeOnly(0,0);
             if (existingData != null)
             {

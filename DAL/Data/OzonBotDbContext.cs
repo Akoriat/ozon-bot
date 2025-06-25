@@ -18,5 +18,6 @@ namespace DAL.Data
         public DbSet<AssistantMode> AssistantModes { get; set; } = null!;
         public DbSet<ActiveTopic> ActiveTopics { get; set; } = null;
         public DbSet<ParsersMode> ParsersModes { get; set; } = null!;
+        public DbSet<ParserDateLimit> ParserDateLimits { get; set; } = null!;
     }
 }
