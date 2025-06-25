@@ -26,6 +26,7 @@ public static class BLExtensions
         serviceCollection.AddScoped<IActiveTopicBl, ActiveTopicBl>();
         serviceCollection.AddScoped<IRefreshTopicsService, RefreshTopicsService>();
         serviceCollection.AddScoped<IParsersModeBl, ParsersModeBl>();
+        serviceCollection.AddScoped<IParserDateLimitBl, ParserDateLimitBl>();
 
         return serviceCollection;
     }

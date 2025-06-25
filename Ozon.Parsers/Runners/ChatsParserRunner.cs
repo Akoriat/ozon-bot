@@ -4,6 +4,7 @@ using DAL.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Bl.Common.Configs;
+using Bl.Common.Enum;
 
 namespace Ozon.Parsers.Runners
 {
@@ -14,6 +15,7 @@ namespace Ozon.Parsers.Runners
             var parser = serviceProvider.GetRequiredService<IChatParserService>();
             var dataStore = serviceProvider.GetRequiredService<IChatParserBl>();
             var newDataRepository = serviceProvider.GetRequiredService<INewDataRepositoryBl>();
+            var dateLimitBl = serviceProvider.GetRequiredService<IParserDateLimitBl>();
 
             try
             {
@@ -25,9 +27,10 @@ namespace Ozon.Parsers.Runners
 
                 var chatIds = dataStore.GetLatestChatIds();
 
-                var data = parser.ExtractNewChats(chatIds);
+                var limit = dateLimitBl.GetStopDateAsync(ParserType.ChatParserApp.ToString(), cancellationToken).GetAwaiter().GetResult();
+                var data = parser.ExtractNewChats(chatIds, limit);
 
-                var updateData = parser.UpdateChats();
+                var updateData = parser.UpdateChats(limit);
 
                 data.UnionWith(updateData);
 

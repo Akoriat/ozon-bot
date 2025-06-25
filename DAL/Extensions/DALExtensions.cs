@@ -24,6 +24,7 @@ public static class DALExtensions
         serviceCollection.AddScoped<IAssistantModeDal, AssistantModeDal>();
         serviceCollection.AddScoped<IActiveTopicDataStore, ActiveTopicDataStore>();
         serviceCollection.AddScoped<IParsersModeDal, ParsersModeDal>();
+        serviceCollection.AddScoped<IParserDateLimitDal, ParserDateLimitDal>();
 
         return serviceCollection;
     }

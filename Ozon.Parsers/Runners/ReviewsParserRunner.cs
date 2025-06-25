@@ -2,6 +2,7 @@
 using DAL.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Bl.Common.Configs;
+using Bl.Common.Enum;
 
 namespace Ozon.Parsers.Runners
 {
@@ -12,6 +13,7 @@ namespace Ozon.Parsers.Runners
             var newDataRepository = sp.GetRequiredService<INewDataRepositoryBl>();
             var parser = sp.GetRequiredService<IOzonReviewParserService>();
             var reviewBl = sp.GetRequiredService<IReviewDataStoreBl>();
+            var dateLimitBl = sp.GetRequiredService<IParserDateLimitBl>();
 
             string reviewsUrl = config.ReviewsParserAppSiteUrl;
             parser.Navigate(reviewsUrl);
@@ -30,8 +32,9 @@ namespace Ozon.Parsers.Runners
             bool hasMore = true;
 
             var dateNow = DateOnly.FromDateTime(DateTime.Now);
+            var stopDate = dateLimitBl.GetStopDateAsync(ParserType.ReviewsParser.ToString(), ct).GetAwaiter().GetResult() ?? DateOnly.MinValue;
 
-            while (hasMore && !ct.IsCancellationRequested)
+            while (hasMore && !ct.IsCancellationRequested && dateNow >= stopDate)
             {
                 iterationCount++;
 

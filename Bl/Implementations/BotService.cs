@@ -36,6 +36,7 @@ namespace Ozon.Bot.Services
         private readonly INewDataRepositoryBl _dataRepositoryBl;
         private readonly IChatParserBl _chatParserBl;
         private readonly IParsersModeBl _parsersModeBl;
+        private readonly IParserDateLimitBl _parserDateLimitBl;
 
         private readonly Channel<CallbackQuery> _callbackQueue;
         private readonly Dictionary<string, string> _urls;
@@ -66,6 +67,7 @@ namespace Ozon.Bot.Services
             IOptions<UrlsConfig> urlsOptions,
             IOptions<PromtsConfig> promtsOptions,
             IParsersModeBl parsersModeBl,
+            IParserDateLimitBl parserDateLimitBl,
             Channel<CallbackQuery> callbackQueue)
         {
             _botClient = botClient;
@@ -93,6 +95,7 @@ namespace Ozon.Bot.Services
             _chatParserBl = chatParserBl;
             _answerPrompt = promtsOptions.Value.AnswerPrompt;
             _parsersModeBl = parsersModeBl;
+            _parserDateLimitBl = parserDateLimitBl;
             _callbackQueue = callbackQueue;
         }
 
@@ -182,6 +185,28 @@ namespace Ozon.Bot.Services
                     replyMarkup: keyboard,
                     cancellationToken: ct
                 );
+                return;
+            }
+            if (msg?.Text == "/dates")
+            {
+                var settings = await _parserDateLimitBl.GetAllAsync(ct);
+                var text = string.Join("\n", settings.Select(s => $"{s.ParserName}: {s.StopDate:dd.MM.yyyy}"));
+                await _botClient.SendMessage(msg.Chat.Id, text, cancellationToken: ct);
+                return;
+            }
+            if (msg?.Text != null && msg.Text.StartsWith("/setdate "))
+            {
+                var parts = msg.Text.Split(' ');
+                if (parts.Length == 3 && Enum.TryParse(parts[1], out ParserType _) &&
+                    DateOnly.TryParseExact(parts[2], "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+                {
+                    await _parserDateLimitBl.SetStopDateAsync(parts[1], dt, ct);
+                    await _botClient.SendMessage(msg.Chat.Id, $"Дата для {parts[1]} установлена на {dt:dd.MM.yyyy}", cancellationToken: ct);
+                }
+                else
+                {
+                    await _botClient.SendMessage(msg.Chat.Id, "Неверный формат. /setdate <ParserName> dd.MM.yyyy", replyParameters: msg.MessageId, cancellationToken: ct);
+                }
                 return;
             }
             if (msg?.Text is "/a" or "/answer")
