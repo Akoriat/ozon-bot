@@ -191,10 +191,11 @@ namespace Ozon.Bot.Services
             {
                 var settings = await _parserDateLimitBl.GetAllAsync(ct);
                 var text = string.Join("\n", settings.Select(s => $"{s.ParserName}: {s.StopDate:dd.MM.yyyy}"));
+                text = !string.IsNullOrEmpty(text) ? text : "В базе данных нет информации о датах";
                 await _botClient.SendMessage(msg.Chat.Id, text, cancellationToken: ct);
                 return;
             }
-            if (msg?.Text != null && msg.Text.StartsWith("/setdate "))
+            if (msg?.Text != null && msg.Text.StartsWith("/setdate"))
             {
                 var parts = msg.Text.Split(' ');
                 if (parts.Length == 3 && Enum.TryParse(parts[1], out ParserType _) &&
