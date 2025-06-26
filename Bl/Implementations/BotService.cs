@@ -331,36 +331,33 @@ namespace Ozon.Bot.Services
 
             if (callbackQuery.Data == "refresh")
             {
-                ManualTriggerRefresh();
+                await ManualTriggerRefreshAsync();
                 return;
             }
 
             _callbackQueue.Writer.TryWrite(callbackQuery);
         }
 
-        public void ManualTriggerRefresh()
+        public async Task ManualTriggerRefreshAsync()
         {
-            _ = Task.Run(async () =>
+            if (!await _refreshLock.WaitAsync(0))
             {
-                if (!await _refreshLock.WaitAsync(0))
-                {
-                    Console.WriteLine("REFRESH уже запущен!");
-                    return;
-                }
+                Console.WriteLine("REFRESH уже запущен!");
+                return;
+            }
 
-                try
-                {
-                    await DoScheduledWorkAsync(CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Background refresh failed");
-                }
-                finally
-                {
-                    _refreshLock.Release();
-                }
-            });
+            try
+            {
+                await DoScheduledWorkAsync(CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Background refresh failed");
+            }
+            finally
+            {
+                _refreshLock.Release();
+            }
         }
 
         public async Task ProcessCallbackInBackgroundAsync(CallbackQuery callbackQuery, CancellationToken ct)

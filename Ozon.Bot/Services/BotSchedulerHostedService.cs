@@ -64,7 +64,7 @@ public sealed class BotSchedulerHostedService : ResilientBackgroundService
             //    _logger.LogError(ex, "Ошибка при выполнении запланированной задачи");
             //}
             // вместо прямого await DoScheduledWork — триггерим тот же семафорный метод
-            botService.ManualTriggerRefresh();
+            await botService.ManualTriggerRefreshAsync();
             _logger.LogInformation("Запланированный Refresh запущен (или пропущен, если уже идёт).");
         }
     }

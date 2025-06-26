@@ -7,6 +7,6 @@ namespace Bl.Interfaces
         public Task DoScheduledWorkAsync(CancellationToken stoppingToken);
         public Task HandleUpdateAsync(Update update, CancellationToken cancellationToken);
         public Task ProcessCallbackInBackgroundAsync(CallbackQuery callbackQuery, CancellationToken ct);
-        public void ManualTriggerRefresh();
+        public Task ManualTriggerRefreshAsync();
     }
 }

@@ -13,6 +13,12 @@ namespace Bl.Implementations
         }
         public async Task<int> AddActiveTopicAsync(ActiveTopic activeTopic)
         {
+            var existing = (await _activeTopicDataStore.GetActiveTopicsAsync())
+                .FirstOrDefault(x => x.RequestId == activeTopic.RequestId
+                                   || x.MessageThreadId == activeTopic.MessageThreadId);
+            if (existing != null)
+                return existing.Id;
+
             return await _activeTopicDataStore.AddActiveTopicAsync(activeTopic);
         }
 
