@@ -36,6 +36,10 @@ namespace Ozon.Parsers.Runners
 
                 foreach (var chatId in data)
                 {
+                    var existing = newDataRepository.GetEntryBySourceRecordId(chatId);
+                    if (existing != null)
+                        continue;
+
                     var newEntry = new NewDataEntry
                     {
                         ParserName = "ChatParserApp",
