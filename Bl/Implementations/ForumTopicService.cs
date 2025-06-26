@@ -42,6 +42,19 @@ IActiveTopicBl activeTopicBl)
 
         public async Task CreateTopicForRequestAsync(CreateTopicDto createTopicDto, CancellationToken ct)
         {
+            // avoid duplicates if the request has been processed earlier
+            var existing = await _topicRequestBl.TryGetTopicInfo(createTopicDto.RequestId);
+            if (existing != null)
+            {
+                return; // topic already exists
+            }
+
+            var activeTopics = await _activeTopicBl.GetActiveTopicsAsync();
+            if (activeTopics.Any(x => x.RequestId == createTopicDto.RequestId))
+            {
+                return;
+            }
+
             var assistantMods = await _assistantModeBl.GetAllModesAsync(ct);
             var modWithCurrentName = assistantMods.FirstOrDefault(x => x.AssistantName == createTopicDto.AssistantType.ToString());
             if (modWithCurrentName == null)

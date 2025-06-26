@@ -47,6 +47,7 @@ namespace Ozon.Bot.Services
         private record AwaitState(AwaitMode Mode, DateTime SetAt);
 
         private readonly ConcurrentDictionary<int, AwaitState> _awaiting = new();
+        private readonly ConcurrentDictionary<long, string> _awaitingDate = new();
 
         private const int AwaitTimeoutMinutes = 10;
 
@@ -127,6 +128,41 @@ namespace Ozon.Bot.Services
                 if (state.SetAt < DateTime.UtcNow.AddMinutes(-AwaitTimeoutMinutes))
                     _awaiting.TryRemove(thread, out _);
 
+            // ожидание ввода даты для /setdate
+            if (_awaitingDate.TryGetValue(msg.From!.Id, out var parserName) && !msg.Text!.StartsWith("/"))
+            {
+                if (DateOnly.TryParseExact(msg.Text, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+                {
+                    await _parserDateLimitBl.SetStopDateAsync(parserName, dt, ct);
+                    await _botClient.SendMessage(msg.Chat.Id, $"Дата для {parserName} установлена на {dt:dd.MM.yyyy}", cancellationToken: ct);
+                    _awaitingDate.TryRemove(msg.From.Id, out _);
+                }
+                else
+                {
+                    await _botClient.SendMessage(msg.Chat.Id, "Неверный формат. Введите дату в формате dd.MM.yyyy", replyParameters: msg.MessageId, cancellationToken: ct);
+                }
+                return;
+            }
+
+            if (msg?.Text == "/command")
+            {
+                var commands = new[]
+                {
+                    "/parsers",
+                    "/refresh",
+                    "/status",
+                    "/urls",
+                    "/dates",
+                    "/setdate",
+                    "/answer (/a)",
+                    "/correcting (/c)",
+                    "/delete"
+                };
+                var text = "Доступные команды:\n" + string.Join("\n", commands);
+                await _botClient.SendMessage(msg.Chat.Id, text, cancellationToken: ct);
+                return;
+            }
+
             // 2) ловим ожидаемый текст (не начинается с '/')
             if (msg.MessageThreadId is int tid &&
                 _awaiting.TryRemove(tid, out var st) &&
@@ -193,6 +229,12 @@ namespace Ozon.Bot.Services
                 var text = string.Join("\n", settings.Select(s => $"{s.ParserName}: {s.StopDate:dd.MM.yyyy}"));
                 text = !string.IsNullOrEmpty(text) ? text : "В базе данных нет информации о датах";
                 await _botClient.SendMessage(msg.Chat.Id, text, cancellationToken: ct);
+                return;
+            }
+            if (msg?.Text == "/setdate")
+            {
+                var keyboard = BuildSetDateParsersKeyboard();
+                await _botClient.SendMessage(msg.Chat.Id, "Выберите парсер:", replyMarkup: keyboard, cancellationToken: ct);
                 return;
             }
             if (msg?.Text != null && msg.Text.StartsWith("/setdate"))
@@ -289,36 +331,33 @@ namespace Ozon.Bot.Services
 
             if (callbackQuery.Data == "refresh")
             {
-                ManualTriggerRefresh();
+                await ManualTriggerRefreshAsync();
                 return;
             }
 
             _callbackQueue.Writer.TryWrite(callbackQuery);
         }
 
-        public void ManualTriggerRefresh()
+        public async Task ManualTriggerRefreshAsync()
         {
-            _ = Task.Run(async () =>
+            if (!await _refreshLock.WaitAsync(0))
             {
-                if (!await _refreshLock.WaitAsync(0))
-                {
-                    Console.WriteLine("REFRESH уже запущен!");
-                    return;
-                }
+                Console.WriteLine("REFRESH уже запущен!");
+                return;
+            }
 
-                try
-                {
-                    await DoScheduledWorkAsync(CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Background refresh failed");
-                }
-                finally
-                {
-                    _refreshLock.Release();
-                }
-            });
+            try
+            {
+                await DoScheduledWorkAsync(CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Background refresh failed");
+            }
+            finally
+            {
+                _refreshLock.Release();
+            }
         }
 
         public async Task ProcessCallbackInBackgroundAsync(CallbackQuery callbackQuery, CancellationToken ct)
@@ -365,6 +404,16 @@ namespace Ozon.Bot.Services
                     replyMarkup: updatedKeyboard,
                     cancellationToken: ct
                 );
+
+                return;
+            }
+            else if (action == "setdate")
+            {
+                _awaitingDate[callbackQuery.From.Id] = payload;
+                await _botClient.SendMessage(
+                    chatId: callbackQuery.Message!.Chat.Id,
+                    text: $"Введите дату для {payload} в формате dd.MM.yyyy:",
+                    cancellationToken: ct);
 
                 return;
             }
@@ -645,6 +694,15 @@ namespace Ozon.Bot.Services
                     text: $"{kvp.ParserName}: {(kvp.IsActive ? "Активен" : "Неактивен")}",
                     callbackData: $"parser*_*{kvp.ParserName}"
                 ))
+                .Select(btn => new[] { btn })
+                .ToArray();
+
+            return new InlineKeyboardMarkup(buttons);
+        }
+        private static InlineKeyboardMarkup BuildSetDateParsersKeyboard()
+        {
+            var buttons = Enum.GetNames(typeof(ParserType))
+                .Select(name => InlineKeyboardButton.WithCallbackData(name, $"setdate*_*{name}"))
                 .Select(btn => new[] { btn })
                 .ToArray();
 
