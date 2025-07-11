@@ -1,166 +1,165 @@
-﻿using Bl.Common.Configs;
-using Bl.Common.DTOs;
-using Bl.Interfaces;
+﻿using Bl.Interfaces;
+using Common.Configuration.Configs;
 using DAL.Migrations;
 using DAL.Models;
 using DocumentFormat.OpenXml.Spreadsheet;
+using Entities.DTOs;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ActiveTopic = DAL.Models.ActiveTopic;
 
-namespace Bl.Implementations
+namespace Bl.Implementations;
+
+public class AnswerClientService : IAnswerClientService
 {
-    public class AnswerClientService : IAnswerClientService
+    private readonly IChatParserService _chatParserService;
+    private readonly IQuestionParserService _parserForOzonSellerService;
+    private readonly IOzonReviewParserService _parserForOzonReviewParserService;
+    private readonly ParserConfig _parserConfig;
+    private readonly IReviewDataStoreBl _reviewDataStoreBl;
+    private readonly ILogger<AnswerClientService> _logger;
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private readonly HashSet<string> _inProgressRequests = [];
+    public AnswerClientService(IChatParserService chatParserService
+        , IQuestionParserService parserForOzonSellerService
+        , IOzonReviewParserService parserForOzonReviewParserService
+        , IOptions<ParserConfig> parserConfig
+        , ILogger<AnswerClientService> logger
+        , IReviewDataStoreBl reviewDataStoreBl)
     {
-        private readonly IChatParserService _chatParserService;
-        private readonly IParserForOzonSellerService _parserForOzonSellerService;
-        private readonly IOzonReviewParserService _parserForOzonReviewParserService;
-        private readonly ParserConfig _parserConfig;
-        private readonly IReviewDataStoreBl _reviewDataStoreBl;
-        private readonly ILogger<AnswerClientService> _logger;
-        private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
-        private readonly HashSet<string> _inProgressRequests = new();
-        public AnswerClientService(IChatParserService chatParserService
-            , IParserForOzonSellerService parserForOzonSellerService
-            , IOzonReviewParserService parserForOzonReviewParserService
-            , IOptions<ParserConfig> parserConfig
-            , ILogger<AnswerClientService> logger
-            , IReviewDataStoreBl reviewDataStoreBl)
+        _chatParserService = chatParserService;
+        _parserForOzonReviewParserService = parserForOzonReviewParserService;
+        _parserForOzonSellerService = parserForOzonSellerService;
+        _parserConfig = parserConfig.Value;
+        _logger = logger;
+        _reviewDataStoreBl = reviewDataStoreBl;
+    }
+
+    public bool RefreshTopic(ActiveTopic activeTopic)
+    {
+        var key = activeTopic.RequestId;
+
+        if (!_inProgressRequests.Add(key))
         {
-            _chatParserService = chatParserService;
-            _parserForOzonReviewParserService = parserForOzonReviewParserService;
-            _parserForOzonSellerService = parserForOzonSellerService;
-            _parserConfig = parserConfig.Value;
-            _logger = logger;
-            _reviewDataStoreBl = reviewDataStoreBl;
+            _logger.LogWarning("Повторный запрос для RequestId {RequestId}, игнорируем", key);
+            return false;
         }
 
-        public bool RefreshTopic(ActiveTopic activeTopic)
+        _semaphore.Wait();
+        try
         {
-            var key = activeTopic.RequestId;
+            var parserName = activeTopic.ParserName;
 
-            if (!_inProgressRequests.Add(key))
+            if (parserName == "ChatParserApp")
             {
-                _logger.LogWarning("Повторный запрос для RequestId {RequestId}, игнорируем", key);
-                return false;
+                _chatParserService.Navigate(_parserConfig.ChatParserSiteUrl);
+                return _chatParserService.RefreshActiveTopic(activeTopic.RequestId);
             }
-
-            _semaphore.Wait();
-            try
+            else if (parserName == "QuestionsParserApp")
             {
-                var parserName = activeTopic.ParserName;
-
-                if (parserName == "ChatParserApp")
-                {
-                    _chatParserService.Navigate(_parserConfig.ChatParserSiteUrl);
-                    return _chatParserService.RefreshActiveTopic(activeTopic.RequestId);
-                }
-                else if (parserName == "QuestionsParserApp")
-                {
-                    _parserForOzonSellerService.Navigate(_parserConfig.ParserForOzonSellerSiteUrl);
-                    return _parserForOzonSellerService.RefreshActiveTopic(activeTopic.RequestId);
-                }
-                else //ReviewsParser
-                {
-                    _parserForOzonReviewParserService.Navigate(_parserConfig.ReviewsParserAppSiteUrl);
-                    return _parserForOzonReviewParserService.RefreshActiveTopic(activeTopic.RequestId, activeTopic.Article);
-                }
+                _parserForOzonSellerService.Navigate(_parserConfig.ParserForOzonSellerSiteUrl);
+                return _parserForOzonSellerService.RefreshActiveTopic(activeTopic.RequestId);
             }
-            finally
+            else //ReviewsParser
             {
-                _inProgressRequests.Remove(key);
-                _semaphore.Release();
+                _parserForOzonReviewParserService.Navigate(_parserConfig.ReviewsParserAppSiteUrl);
+                return _parserForOzonReviewParserService.RefreshActiveTopic(activeTopic.RequestId, activeTopic.Article!);
             }
         }
-
-        public bool SendMessageToClientAutoAssistant(SendMessageToClientAutoAssistantDto topic)
+        finally
         {
-            var key = topic.RequestId;
+            _inProgressRequests.Remove(key);
+            _semaphore.Release();
+        }
+    }
 
-            if (!_inProgressRequests.Add(key))
-            {
-                _logger.LogWarning("Повторный запрос для RequestId {RequestId}, игнорируем", key);
-                return false;
-            }
+    public bool SendMessageToClientAutoAssistant(SendMessageToClientAutoAssistantDto topic)
+    {
+        var key = topic.RequestId;
 
-            _semaphore.Wait();
-            try
-            {
-                var parserName = topic.ParserName;
-                var message = topic.GptDraftAnswer;
-                if (parserName == "ChatParserApp")
-                {
-                    _chatParserService.Navigate(_parserConfig.ChatParserSiteUrl);
-                    return _chatParserService.SendMessageToClient(topic.RequestId, message);
-                }
-                else if (parserName == "QuestionsParserApp")
-                {
-                    _parserForOzonSellerService.Navigate(_parserConfig.ParserForOzonSellerSiteUrl);
-                    return _parserForOzonSellerService.SendMessageToClient(topic.RequestId, message);
-                }
-                else //ReviewsParser
-                {
-                    var review = _reviewDataStoreBl.GetReviewByUniqueKey(topic.RequestId).Result;
-                    bool result = false;
-                    _parserForOzonReviewParserService.Navigate(_parserConfig.ReviewsParserAppSiteUrl);
-                    do
-                    {
-                        result = _parserForOzonReviewParserService.SendMessageToClient(topic.RequestId, message, review.Article);
-                    } while (!result);
-                    return result;
-                }
-            }
-            finally
-            {
-                _inProgressRequests.Remove(key);
-                _semaphore.Release();
-            }
+        if (!_inProgressRequests.Add(key))
+        {
+            _logger.LogWarning("Повторный запрос для RequestId {RequestId}, игнорируем", key);
+            return false;
         }
 
-        public bool SendMessageToClientManualAssistant(TopicRequest topic, string? adminMessage = null)
+        _semaphore.Wait();
+        try
         {
-            var key = topic.RequestId;
+            var parserName = topic.ParserName;
+            var message = topic.GptDraftAnswer;
+            if (parserName == "ChatParserApp")
+            {
+                _chatParserService.Navigate(_parserConfig.ChatParserSiteUrl);
+                return _chatParserService.SendMessageToClient(topic.RequestId, message);
+            }
+            else if (parserName == "QuestionsParserApp")
+            {
+                _parserForOzonSellerService.Navigate(_parserConfig.ParserForOzonSellerSiteUrl);
+                return _parserForOzonSellerService.SendMessageToClient(topic.RequestId, message);
+            }
+            else //ReviewsParser
+            {
+                var review = _reviewDataStoreBl.GetReviewByUniqueKey(topic.RequestId).Result;
+                _parserForOzonReviewParserService.Navigate(_parserConfig.ReviewsParserAppSiteUrl);
+                bool result;
+                do
+                {
+                    result = _parserForOzonReviewParserService.SendMessageToClient(topic.RequestId, message, review.Article!);
+                } while (!result);
+                return result;
+            }
+        }
+        finally
+        {
+            _inProgressRequests.Remove(key);
+            _semaphore.Release();
+        }
+    }
 
-            if (!_inProgressRequests.Add(key))
-            {
-                _logger.LogWarning("Повторный запрос для RequestId {RequestId}, игнорируем", key);
-                return false;
-            }
+    public bool SendMessageToClientManualAssistant(TopicRequest topic, string? adminMessage = null)
+    {
+        var key = topic.RequestId;
 
-            _semaphore.Wait();
-            try
+        if (!_inProgressRequests.Add(key))
+        {
+            _logger.LogWarning("Повторный запрос для RequestId {RequestId}, игнорируем", key);
+            return false;
+        }
+
+        _semaphore.Wait();
+        try
+        {
+            var parserName = topic.ParserName;
+            var message = adminMessage ?? topic.GptDraftAnswer;
+            if (parserName == "ChatParserApp")
             {
-                var parserName = topic.ParserName;
-                var message = adminMessage ?? topic.GptDraftAnswer;
-                if (parserName == "ChatParserApp")
-                {
-                    _chatParserService.Navigate(_parserConfig.ChatParserSiteUrl);
-                    return _chatParserService.SendMessageToClient(topic.RequestId, message);
-                }
-                else if (parserName == "QuestionsParserApp")
-                {
-                    _parserForOzonSellerService.Navigate(_parserConfig.ParserForOzonSellerSiteUrl);
-                    return _parserForOzonSellerService.SendMessageToClient(topic.RequestId, message);
-                }
-                else //ReviewsParser
-                {
-                    var review = _reviewDataStoreBl.GetReviewByUniqueKey(topic.RequestId).Result;
-                    bool result = false;
-                    _parserForOzonReviewParserService.Navigate(_parserConfig.ReviewsParserAppSiteUrl);
-                    var count = 0;
-                    do
-                    {
-                        result = _parserForOzonReviewParserService.SendMessageToClient(topic.RequestId, message, review.Article);
-                        count++;
-                    } while (!result && count < 3);
-                    return result;
-                }
+                _chatParserService.Navigate(_parserConfig.ChatParserSiteUrl);
+                return _chatParserService.SendMessageToClient(topic.RequestId, message);
             }
-            finally
+            else if (parserName == "QuestionsParserApp")
             {
-                _inProgressRequests.Remove(key);
-                _semaphore.Release();
+                _parserForOzonSellerService.Navigate(_parserConfig.ParserForOzonSellerSiteUrl);
+                return _parserForOzonSellerService.SendMessageToClient(topic.RequestId, message);
             }
+            else //ReviewsParser
+            {
+                var review = _reviewDataStoreBl.GetReviewByUniqueKey(topic.RequestId).Result;
+                _parserForOzonReviewParserService.Navigate(_parserConfig.ReviewsParserAppSiteUrl);
+                var count = 0;
+                bool result;
+                do
+                {
+                    result = _parserForOzonReviewParserService.SendMessageToClient(topic.RequestId, message, review.Article!);
+                    count++;
+                } while (!result && count < 3);
+                return result;
+            }
+        }
+        finally
+        {
+            _inProgressRequests.Remove(key);
+            _semaphore.Release();
         }
     }
 }

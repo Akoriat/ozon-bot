@@ -1,11 +1,10 @@
-﻿using Bl.Common.DTOs;
-using DAL.Models;
+﻿using DAL.Models;
+using Entities.DTOs;
 
 namespace Bl.Interfaces
 {
     public interface IOzonReviewParserService
     {
-        //public List<InTopicModelDto<Review>> ParseIteration(DateOnly date, TimeOnly time, out bool hasMore);
         public Task<(List<InTopicModelDto<Review>>, bool)> ParseIteration(DateOnly date, TimeOnly time, CancellationToken ct);
         public void ClickButton(out bool hasMore);
         public void Navigate(string url, int maxAttempts = 3, int waitSeconds = 30);

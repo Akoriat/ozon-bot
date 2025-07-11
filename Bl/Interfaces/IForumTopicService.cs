@@ -1,4 +1,4 @@
-﻿using Bl.Common.DTOs;
+﻿using Entities.DTOs;
 
 namespace Bl.Interfaces
 {

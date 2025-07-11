@@ -1,4 +1,4 @@
-﻿using Bl.Common.Enum;
+﻿using Common.Enums;
 using DAL.Models;
 
 namespace Bl.Interfaces

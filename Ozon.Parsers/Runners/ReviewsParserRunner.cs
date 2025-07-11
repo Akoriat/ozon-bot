@@ -1,8 +1,8 @@
 ﻿using Bl.Interfaces;
+using Common.Configuration.Configs;
+using Common.Enums;
 using DAL.Models;
 using Microsoft.Extensions.DependencyInjection;
-using Bl.Common.Configs;
-using Bl.Common.Enum;
 
 namespace Ozon.Parsers.Runners
 {

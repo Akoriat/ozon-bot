@@ -1,17 +1,15 @@
-﻿using Bl.Common.Configs;
-using Bl.Extensions;
+﻿using Bl.Extensions;
+using Bl.Gates;
+using Common.Configuration.Configs;
 using DAL.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using Ozon.Bot.Services;
 using Serilog;
-using System;
 using System.Threading.Channels;
-using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using LoggerConfiguration = Common.Configuration.LoggerConfiguration;
@@ -37,7 +35,7 @@ try
             services.Configure<PromtsConfig>(cfg.GetSection("Promts"));
 
             var token = cfg.GetValue<string>("BotConfig:Token");
-            services.AddSingleton<ITelegramBotClient>(_ => new TelegramBotClient(token));
+            services.AddSingleton<ITelegramBotClient>(_ => new TelegramBotClient(token!));
             services.AddSingleton(Channel.CreateUnbounded<CallbackQuery>());
 
             services.UseDAL(cfg);
@@ -45,6 +43,7 @@ try
 
             services.AddHostedService<BotHostedService>();
             services.AddHostedService<BotSchedulerHostedService>();
+            services.AddHostedService<BotMenuHostedService>();
 
             services.AddSingleton<IWebDriver>(sp =>
             {
@@ -58,19 +57,6 @@ try
                 return new ChromeDriver(opts);
             });
             services.AddSingleton<SeleniumGate>();
-            //services.AddSingleton(_ =>
-            //{
-            //    var options = new ChromeOptions
-            //    {
-            //        DebuggerAddress = "127.0.0.1:9223"
-            //    };
-            //    var relative = @"%LOCALAPPDATA%\Google\Chrome\sender_profile";
-            //    options.AddArgument("--user-data-dir=" + Environment.ExpandEnvironmentVariables(relative));
-            //    return options;
-            //});
-            //services.AddTransient<IWebDriver>(sp =>
-            //    new ChromeDriver(sp.GetRequiredService<ChromeOptions>())
-            //);
         })
         .Build();
 

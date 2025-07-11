@@ -51,19 +51,9 @@ public sealed class BotSchedulerHostedService : ResilientBackgroundService
                 break;
             }
 
-            //try
-            //{
             using var scope = _services.CreateScope();
             var botService = scope.ServiceProvider.GetRequiredService<IBotService>();
 
-            //    await botService.DoScheduledWorkAsync(stoppingToken);
-            //    _logger.LogInformation("Запланированная задача выполнена успешно.");
-            //}
-            //catch (Exception ex)
-            //{
-            //    _logger.LogError(ex, "Ошибка при выполнении запланированной задачи");
-            //}
-            // вместо прямого await DoScheduledWork — триггерим тот же семафорный метод
             await botService.ManualTriggerRefreshAsync();
             _logger.LogInformation("Запланированный Refresh запущен (или пропущен, если уже идёт).");
         }

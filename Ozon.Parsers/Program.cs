@@ -1,20 +1,15 @@
-﻿using Bl.Common.Configs;
-using Bl.Extensions;
+﻿using Bl.Extensions;
+using Bl.Gates;
+using Common.Configuration.Configs;
 using DAL.Extensions;
-using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
-using Ozon.Bot.Services;
 using Ozon.Parsers;
 using Serilog;
-using System;
 using Telegram.Bot;
-using Telegram.Bot.Types;
-using TL;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,7 +29,7 @@ builder.Host.UseSerilog(Common.Configuration.LoggerConfiguration.ConfigureLogger
 
 builder.Services.AddHostedService<ParsersAggregatorService>();
 
-builder.Services.AddSingleton<ITelegramBotClient>(_ => new TelegramBotClient(token));
+builder.Services.AddSingleton<ITelegramBotClient>(_ => new TelegramBotClient(token!));
 
 builder.Services.AddSingleton<IWebDriver>(sp =>
 {

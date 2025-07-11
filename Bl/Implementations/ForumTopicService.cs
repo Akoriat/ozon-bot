@@ -1,7 +1,7 @@
-﻿using Bl.Common.Configs;
-using Bl.Common.DTOs;
-using Bl.Interfaces;
+﻿using Bl.Interfaces;
+using Common.Configuration.Configs;
 using DAL.Models;
+using Entities.DTOs;
 using Microsoft.Extensions.Options;
 using System.Threading;
 using Telegram.Bot;
@@ -153,20 +153,6 @@ IActiveTopicBl activeTopicBl)
                 $":\n\n{createTopicDto.UserQuestion}",
                 cancellationToken: ct
             );
-
-            //await _botClient.SendMessage(
-            //     chatId: _forumChatId,
-            //     messageThreadId: threadId,
-            //     text: $"/a или /answer - это отправка корректирующего ответа в гпт с использованием промта из конфигурационного файла. Возвращает исправленный гпт ответ.\n/c или /correcting - отправка сообщения в гпт, ничем не отличается от простого написания в чат с гпт, возвращает ответ гпт",
-            //     cancellationToken: ct
-            // );
-
-            // await _botClient.SendMessage(
-            //     chatId: _forumChatId,
-            //     messageThreadId: threadId,
-            //     text: $"Переменные:\nGPTANSWER - Предыдущий ответ GPT, если есть\nCOMMENT - Комментарий клиента",
-            //     cancellationToken: ct
-            // );
 
             await _botClient.SendMessage(
                 chatId: _forumChatId,

@@ -1,26 +1,25 @@
-﻿using Bl.Common.Enum;
-using Bl.Interfaces;
+﻿using Bl.Interfaces;
+using Common.Enums;
 using DAL.Interfaces;
 using DAL.Models;
 
-namespace Bl.Implementations
+namespace Bl.Implementations;
+
+public class AssistantModeBl : IAssistantModeBl
 {
-    public class AssistantModeBl : IAssistantModeBl
+    private readonly IAssistantModeDal _assistantModeDal;
+    public AssistantModeBl(IAssistantModeDal assistantModeDal)
     {
-        private readonly IAssistantModeDal _assistantModeDal;
-        public AssistantModeBl(IAssistantModeDal assistantModeDal)
-        {
-            _assistantModeDal = assistantModeDal;
-        }
+        _assistantModeDal = assistantModeDal;
+    }
 
-        public async Task<List<AssistantMode>> GetAllModesAsync(CancellationToken ct)
-        {
-            return await _assistantModeDal.GetAllModesAsync(ct);
-        }
+    public async Task<List<AssistantMode>> GetAllModesAsync(CancellationToken ct)
+    {
+        return await _assistantModeDal.GetAllModesAsync(ct);
+    }
 
-        public async Task<bool> ToggleModeAsync(AssistantType assistantType, CancellationToken ct)
-        {
-            return await _assistantModeDal.ToggleModeAsync(assistantType.ToString(), ct);
-        }
+    public async Task<bool> ToggleModeAsync(AssistantType assistantType, CancellationToken ct)
+    {
+        return await _assistantModeDal.ToggleModeAsync(assistantType.ToString(), ct);
     }
 }

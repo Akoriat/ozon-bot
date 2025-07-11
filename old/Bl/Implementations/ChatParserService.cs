@@ -104,7 +104,7 @@ namespace Bl.Implementations
             }).GetAwaiter().GetResult();
         }
 
-        public HashSet<string> ExtractNewChats(HashSet<string> chatIds, DateOnly? minDate = null)
+        public HashSet<string> ExtractNewChats(HashSet<string> chatIds)
         {
             return _gate.RunAsync(async d =>
             {
@@ -180,22 +180,19 @@ namespace Bl.Implementations
 
                         string history = msgContainer?.Text ?? "";
 
-                        if (!minDate.HasValue || parsedDate >= minDate.Value)
+                        result.Add(new InTopicModelDto<ChatRecord>
                         {
-                            result.Add(new InTopicModelDto<ChatRecord>
+                            Model = new ChatRecord
                             {
-                                Model = new ChatRecord
-                                {
-                                    Title = title,
-                                    Unread = unread,
-                                    Date = parsedDate,
-                                    ChatId = chatId,
-                                    Preview = chat.FindElement(By.CssSelector("span[class*=\"preview_preview_\"]")).Text.Trim(),
-                                    History = history
-                                },
-                                InTopic = inTopic
-                            });
-                        }
+                                Title = title,
+                                Unread = unread,
+                                Date = parsedDate,
+                                ChatId = chatId,
+                                Preview = chat.FindElement(By.CssSelector("span[class*=\"preview_preview_\"]")).Text.Trim(),
+                                History = history
+                            },
+                            InTopic = inTopic
+                        });
 
                         newlyAddedChats++;
                     }
@@ -215,13 +212,12 @@ namespace Bl.Implementations
                     await Task.Delay(1500);
                 }
 
-                var filtered = !minDate.HasValue ? result.Select(x => x.Model) : result.Where(r => r.Model.Date >= minDate.Value).Select(x => x.Model);
-                _chatParserBl.AddOrUpdateChats(filtered.ToList());
+                _chatParserBl.AddOrUpdateChats(result.Select(x => x.Model).ToList());
                 Console.WriteLine("Инкрементальное обновление завершено.");
                 return result.Where(y => y.InTopic == true).Select(x => x.Model.ChatId).ToHashSet();
             }).GetAwaiter().GetResult();
         }
-        public HashSet<string> UpdateChats(DateOnly? minDate = null)
+        public HashSet<string> UpdateChats()
         {
             return _gate.RunAsync(async d =>
             {
@@ -268,24 +264,20 @@ namespace Bl.Implementations
 
                     string history = msgContainer?.Text ?? "";
 
-                    if (!minDate.HasValue || date >= minDate.Value)
+                    result.Add(new InTopicModelDto<ChatRecord>
                     {
-                        result.Add(new InTopicModelDto<ChatRecord>
+                        Model = new ChatRecord
                         {
-                            Model = new ChatRecord
-                            {
-                                Title = title,
-                                Date = date,
-                                ChatId = chatId,
-                                History = history
-                            },
-                            InTopic = inTopic
-                        });
-                    }
+                            Title = title,
+                            Date = date,
+                            ChatId = chatId,
+                            History = history
+                        },
+                        InTopic = inTopic
+                    });
                 }
 
-                var filtered = !minDate.HasValue ? result.Select(x => x.Model) : result.Where(r => r.Model.Date >= minDate.Value).Select(x => x.Model);
-                _chatParserBl.AddOrUpdateChats(filtered.ToList());
+                _chatParserBl.AddOrUpdateChats(result.Select(x => x.Model).ToList());
 
                 Console.WriteLine("Обновление диалогов завершено.");
                 return result.Where(y => y.InTopic == true).Select(x => x.Model.ChatId).ToHashSet();

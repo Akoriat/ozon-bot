@@ -8,8 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Content Include="..\Bl\Common\Configs\SharedConfig\appsettings.json" Link="appsettings.json">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <Content Include="..\Common.Configuration\Configs\SharedConfig\appsettings.json" Link="appsettings.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </Content>
     </ItemGroup>
 
@@ -32,7 +32,8 @@
     <ItemGroup>
       <ProjectReference Include="..\Bl\Bl.csproj" />
       <ProjectReference Include="..\Common.Configuration\Common.Configuration.csproj" />
-      <ProjectReference Include="..\DAL\DAL.csproj" />
+      <ProjectReference Include="..\Common.Enums\Common.Enums.csproj" />
+      <ProjectReference Include="..\Entities\Entities.csproj" />
     </ItemGroup>
 
 </Project>

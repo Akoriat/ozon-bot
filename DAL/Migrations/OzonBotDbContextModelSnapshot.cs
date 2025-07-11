@@ -134,6 +134,25 @@ namespace DAL.Migrations
                     b.ToTable("CorrectAnswers");
                 });
 
+            modelBuilder.Entity("DAL.Models.LastMessageIdFromGeneral", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("LastMessageId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LastMessageType")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("LastMessageIdFromGenerals");
+                });
+
             modelBuilder.Entity("DAL.Models.NewDataEntry", b =>
                 {
                     b.Property<int>("Id")
@@ -160,6 +179,9 @@ namespace DAL.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SourceRecordId")
+                        .IsUnique();
 
                     b.ToTable("NewDataEntries");
                 });

@@ -1,6 +1,5 @@
-﻿using Bl.Common.Enum;
+﻿using Common.Enums;
 using DAL.Models;
-using Telegram.Bot.Types.Enums;
 
 namespace Bl.Interfaces
 {

@@ -1,5 +1,5 @@
-﻿using Bl.Common.DTOs;
-using DAL.Models;
+﻿using DAL.Models;
+using Entities.DTOs;
 
 namespace Bl.Interfaces
 {

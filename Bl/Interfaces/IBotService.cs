@@ -8,5 +8,7 @@ namespace Bl.Interfaces
         public Task HandleUpdateAsync(Update update, CancellationToken cancellationToken);
         public Task ProcessCallbackInBackgroundAsync(CallbackQuery callbackQuery, CancellationToken ct);
         public Task ManualTriggerRefreshAsync();
+        Task<int> InitializeBotMenuAsync(CancellationToken stoppingToken);
+        Task<bool> CheckIfLastMessageIsMenuAsync(CancellationToken stoppingToken);
     }
 }

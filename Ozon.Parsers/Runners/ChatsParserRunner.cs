@@ -1,60 +1,57 @@
-﻿using Bl.Implementations;
-using Bl.Interfaces;
+﻿using Bl.Interfaces;
+using Common.Configuration.Configs;
+using Common.Enums;
 using DAL.Models;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Bl.Common.Configs;
-using Bl.Common.Enum;
 
-namespace Ozon.Parsers.Runners
+namespace Ozon.Parsers.Runners;
+
+public static class ChatsParserRunner
 {
-    public static class ChatsParserRunner
+    public static void RunChatParserAsync(IServiceProvider serviceProvider, ParserConfig config, CancellationToken cancellationToken)
     {
-        public static void RunChatParserAsync(IServiceProvider serviceProvider, ParserConfig config, CancellationToken cancellationToken)
+        var parser = serviceProvider.GetRequiredService<IChatParserService>();
+        var dataStore = serviceProvider.GetRequiredService<IChatParserBl>();
+        var newDataRepository = serviceProvider.GetRequiredService<INewDataRepositoryBl>();
+        var dateLimitBl = serviceProvider.GetRequiredService<IParserDateLimitBl>();
+
+        try
         {
-            var parser = serviceProvider.GetRequiredService<IChatParserService>();
-            var dataStore = serviceProvider.GetRequiredService<IChatParserBl>();
-            var newDataRepository = serviceProvider.GetRequiredService<INewDataRepositoryBl>();
-            var dateLimitBl = serviceProvider.GetRequiredService<IParserDateLimitBl>();
+            // Навигация
+            string url = config.ChatParserSiteUrl;
+            parser.Navigate(url);
 
-            try
+            //var newestDbDate = await dataStore.GetNewestChatDate();
+
+            var chatIds = dataStore.GetLatestChatIds();
+
+            var limit = dateLimitBl.GetStopDateAsync(ParserType.ChatParserApp.ToString(), cancellationToken).GetAwaiter().GetResult();
+            var data = parser.ExtractNewChats(chatIds, limit);
+
+            var updateData = parser.UpdateChats(limit);
+
+            data.UnionWith(updateData);
+
+            foreach (var chatId in data)
             {
-                // Навигация
-                string url = config.ChatParserSiteUrl;
-                parser.Navigate(url);
+                var existing = newDataRepository.GetEntryBySourceRecordId(chatId);
+                if (existing != null)
+                    continue;
 
-                //var newestDbDate = await dataStore.GetNewestChatDate();
-
-                var chatIds = dataStore.GetLatestChatIds();
-
-                var limit = dateLimitBl.GetStopDateAsync(ParserType.ChatParserApp.ToString(), cancellationToken).GetAwaiter().GetResult();
-                var data = parser.ExtractNewChats(chatIds, limit);
-
-                var updateData = parser.UpdateChats(limit);
-
-                data.UnionWith(updateData);
-
-                foreach (var chatId in data)
+                var newEntry = new NewDataEntry
                 {
-                    var existing = newDataRepository.GetEntryBySourceRecordId(chatId);
-                    if (existing != null)
-                        continue;
-
-                    var newEntry = new NewDataEntry
-                    {
-                        ParserName = "ChatParserApp",
-                        SourceRecordId = chatId,
-                        CreatedAt = DateTime.UtcNow,
-                        Processed = false
-                    };
-                    newDataRepository.AddEntry(newEntry);
-                }
-
-                Console.WriteLine("Парсинг завершён. Данные сохранены в PostgreSQL.");
+                    ParserName = "ChatParserApp",
+                    SourceRecordId = chatId,
+                    CreatedAt = DateTime.UtcNow,
+                    Processed = false
+                };
+                newDataRepository.AddEntry(newEntry);
             }
-            finally
-            {
-            }
+
+            Console.WriteLine("Парсинг завершён. Данные сохранены в PostgreSQL.");
+        }
+        finally
+        {
         }
     }
 }

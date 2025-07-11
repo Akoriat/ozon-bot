@@ -1,5 +1,5 @@
-﻿using Bl.Common.Enum;
-using Bl.Interfaces;
+﻿using Bl.Interfaces;
+using Common.Enums;
 using DAL.Interfaces;
 using DAL.Models;
 

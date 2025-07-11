@@ -1,12 +1,13 @@
-﻿using Bl.Common.Configs;
-using Bl.Extensions;
+﻿using Bl.Extensions;
+using Bl.Gates;
+using Common.Configuration.Configs;
 using DAL.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
-using Ozon.Bot.Services;
+using Ozon.Topic.Services;
 using Serilog;
 using System;
 using System.Threading.Channels;
@@ -35,7 +36,7 @@ try
             services.Configure<PromtsConfig>(cfg.GetSection("Promts"));
 
             var token = cfg.GetValue<string>("BotConfig:Token");
-            services.AddSingleton<ITelegramBotClient>(_ => new TelegramBotClient(token));
+            services.AddSingleton<ITelegramBotClient>(_ => new TelegramBotClient(token!));
 
             services.AddSingleton(Channel.CreateUnbounded<CallbackQuery>());
 

@@ -1,4 +1,5 @@
 ﻿using Bl.Implementations;
+using Bl.Implementations.Parsers;
 using Bl.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Ozon.Bot.Services;
@@ -12,8 +13,8 @@ public static class BLExtensions
         serviceCollection.AddScoped<IChatParserBl, ChatParserBl>();
         serviceCollection.AddScoped<IChatParserService, ChatParserService>();
         serviceCollection.AddScoped<INewDataRepositoryBl, NewDataRepositoryBl>();
-        serviceCollection.AddScoped<IOzonReviewParserService, OzonReviewParserService>();
-        serviceCollection.AddScoped<IParserForOzonSellerService, ParserForOzonSellerService>();
+        serviceCollection.AddScoped<IOzonReviewParserService, ReviewParserService>();
+        serviceCollection.AddScoped<IQuestionParserService, QuestionParserService>();
         serviceCollection.AddScoped<IQuestionDataStoreBl, QuestionDataStoreBl>();
         serviceCollection.AddScoped<IReviewDataStoreBl, ReviewDataStoreBl>();
         serviceCollection.AddScoped<IChatGPTClient, ChatGPTClient>();
@@ -27,6 +28,7 @@ public static class BLExtensions
         serviceCollection.AddScoped<IRefreshTopicsService, RefreshTopicsService>();
         serviceCollection.AddScoped<IParsersModeBl, ParsersModeBl>();
         serviceCollection.AddScoped<IParserDateLimitBl, ParserDateLimitBl>();
+        serviceCollection.AddScoped<ILastMessageIdFromGeneralBl, LastMessageIdFromGeneralBl>();
 
         return serviceCollection;
     }
