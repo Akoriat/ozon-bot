@@ -4,7 +4,6 @@ using Common.Enums;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
@@ -20,7 +19,6 @@ public sealed class ChatGPTClient : IChatGPTClient
     private readonly ChatGptConfig _config;
     private const string BaseUrl = "https://api.openai.com/v1/";
 
-    private static readonly ConcurrentDictionary<string, SemaphoreSlim> _threadLocks = new();
     private static readonly SemaphoreSlim _semaphore = new(initialCount: 2);
 
     private const double TokenCapacity = 120000;
@@ -162,24 +160,20 @@ long Created_At);
 
 
     #region Public API
-    public async Task<string> SendMessageAsync(string userMessage, AssistantType assistantType, CancellationToken ct = default)
+    public async Task<string> SendMessageAsync(string userMessage, string assistantType, CancellationToken ct = default)
     {
         Console.WriteLine($"SendMessageAsync: send message: {userMessage} in gpt"); // TODO
-        var (assistantId, threadId) = GetAssistantAndThread(assistantType);
+        var (assistantId, threadId) = await GetAssistantAndThreadAsync(assistantType, ct);
 
-        await using (await AcquireThreadLockAsync(threadId, ct))
-        {
-            var correlationId = Guid.NewGuid().ToString("N");
-            Console.WriteLine("SendMessageAsync: add user message");
-            await AddUserMessageAsync(userMessage, threadId, correlationId, ct);
-            Exception? lastError = null;
+        var correlationId = Guid.NewGuid().ToString("N");
+        Console.WriteLine("SendMessageAsync: add user message");
+        await AddUserMessageAsync(userMessage, threadId, correlationId, ct);
+        Exception? lastError = null;
 
             for (int attempt = 0; attempt < MaxRunRetries; attempt++)
             {
                 try
                 {
-
-                    await WaitUntilThreadIsIdleAsync(threadId, ct);
 
                     Console.WriteLine($"SendMessageAsync: CreateRunAsync: attempt: {attempt}");
                     var run = await CreateRunAsync(assistantId, threadId, ct);
@@ -213,51 +207,26 @@ long Created_At);
         }
     }
     private static bool IsRetriable(Exception ex)
-=> ex is TimeoutException
-   || ex.Message.Contains("rate_limit_exceeded")
-   || ex.Message.Contains("temporarily_unavailable");
+        => ex is TimeoutException
+           || ex.Message.Contains("rate_limit_exceeded")
+           || ex.Message.Contains("temporarily_unavailable");
     #endregion
 
     #region Pipeline building blocks
-    private (string assistantId, string threadId) GetAssistantAndThread(AssistantType t) => t switch
+    // Получить id ассистента и создать для него новый thread
+    private async Task<(string assistantId, string threadId)> GetAssistantAndThreadAsync(string name, CancellationToken ct)
     {
-        //AssistantType.ChatGeneralId => (_config.ChatGeneralId, _config.ChatGeneralThreadId),
-        //AssistantType.ReviewGoodId => (_config.ReviewGoodId, _config.ReviewGoodThreadId),
-        //AssistantType.ReviewBadId => (_config.ReviewBadId, _config.ReviewBadThreadId),
-        //AssistantType.QuestionsBrId => (_config.QuestionsBrId, _config.QuestionsBrThreadId),
-        //AssistantType.QuestionsChId => (_config.QuestionsChId, _config.QuestionsChThreadId),
-        //AssistantType.QuestionsKrId => (_config.QuestionsKrId, _config.QuestionsKrThreadId),
-        //AssistantType.QuestionsDsOrDnId => (_config.QuestionsDsOrDnId, _config.QuestionsDsOrDnThreadId),
-        //AssistantType.QuestionsOthersId => (_config.QuestionsOthersId, _config.QuestionsOthersThreadId),
-        _ => throw new ArgumentOutOfRangeException(nameof(t), t, null)
-    };
+        if (!_config.Assistants.TryGetValue(name, out var id))
+            throw new ArgumentOutOfRangeException(nameof(name), name, "Assistant not configured");
 
-    private static async Task<IAsyncDisposable> AcquireThreadLockAsync(string threadId, CancellationToken ct)
-    {
-        var sem = _threadLocks.GetOrAdd(threadId, _ => new SemaphoreSlim(1, 1));
-        await sem.WaitAsync(ct);
-        return new AsyncDisposable(() => sem.Release());
-    }
+        // создаём новый thread для запроса
+        var url = $"{BaseUrl}threads";
+        var resp = await _httpClient.PostAsync(url, null, ct);
+        resp.EnsureSuccessStatusCode();
+        var json = await resp.Content.ReadAsStringAsync(ct);
+        var thread = JsonConvert.DeserializeObject<ThreadObj>(json) ?? throw new("Cannot deserialize thread");
 
-    private async Task WaitUntilThreadIsIdleAsync(string threadId, CancellationToken ct, int pollMs = 1_000, int timeoutS = 120)
-    {
-        var url = $"{BaseUrl}threads/{threadId}/runs?limit=1&order=desc";
-        var sw = Stopwatch.StartNew();
-        while (!ct.IsCancellationRequested)
-        {
-            var resp = await _httpClient.GetAsync(url, ct);
-            resp.EnsureSuccessStatusCode();
-            var json = await resp.Content.ReadAsStringAsync(ct);
-            var list = JsonConvert.DeserializeObject<RunList>(json);
-            var run = list?.Data?.FirstOrDefault();
-            if (run == null || IsTerminalStatus(run.Status)) return;
-
-            if (sw.Elapsed.TotalSeconds > timeoutS)
-                throw new TimeoutException($"Thread {threadId} busy (run {run.Id}, status {run.Status}) > {timeoutS}s");
-
-            await Task.Delay(pollMs, ct);
-        }
-        ct.ThrowIfCancellationRequested();
+        return (id, thread.Id);
     }
 
     private async Task AddUserMessageAsync(string text, string threadId, string correlationId, CancellationToken ct)
@@ -427,5 +396,6 @@ long Created_At);
 
     private record LastError(string Code, string Message);
     private record RunList(List<Run> Data);
+    private record ThreadObj(string Id);
     #endregion
 }

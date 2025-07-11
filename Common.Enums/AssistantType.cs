@@ -1,13 +1,19 @@
-﻿namespace Common.Enums;
+namespace Common.Enums;
 
-public enum AssistantType
+/// <summary>
+/// Well known assistant names used across the application.
+/// Additional assistants can be added through configuration
+/// without updating the code.
+/// </summary>
+public static class AssistantType
 {
-    ReviewGoodId = 0,
-    ReviewBadId = 1,
-    QuestionsBrId = 2,
-    QuestionsChId = 3,
-    QuestionsKrId = 4,
-    QuestionsDsOrDnId = 5,
-    QuestionsOthersId = 6,
-    ChatGeneralId = 7
+    public const string ReviewGood = "ReviewGood";
+    public const string ReviewBad = "ReviewBad";
+    public const string Questions_Others = "Questions_Others";
+    public const string ChatGeneral = "ChatGeneral";
+
+    /// <summary>
+    /// Helper to build dynamic question assistant names.
+    /// </summary>
+    public static string Questions(string articlePrefix) => $"Questions_{articlePrefix}";
 }
