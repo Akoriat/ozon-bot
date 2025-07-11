@@ -1,4 +1,5 @@
-﻿using Bl.Interfaces;
+using Bl.Interfaces;
+using Common.Enums;
 using Common.Configuration.Configs;
 using DAL.Models;
 using Entities.DTOs;
@@ -56,10 +57,10 @@ IActiveTopicBl activeTopicBl)
             }
 
             var assistantMods = await _assistantModeBl.GetAllModesAsync(ct);
-            var modWithCurrentName = assistantMods.FirstOrDefault(x => x.AssistantName == createTopicDto.AssistantType.ToString());
+            var modWithCurrentName = assistantMods.FirstOrDefault(x => x.AssistantName == createTopicDto.AssistantType);
             if (modWithCurrentName == null)
             {
-                throw new Exception($"CreateTopicForRequestAsync в ForumTopicService: ассистент с именем {createTopicDto.AssistantType.ToString()} не найден");
+                throw new Exception($"CreateTopicForRequestAsync в ForumTopicService: ассистент с именем {createTopicDto.AssistantType} не найден");
             }
             switch (modWithCurrentName.IsAuto)
             {
@@ -115,7 +116,7 @@ IActiveTopicBl activeTopicBl)
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 ParserName = createTopicDto.ParserName,
-                AssistantType = (int)createTopicDto.AssistantType
+                AssistantType = createTopicDto.AssistantType
             };
 
             var topicRequestId = await _topicRequestBl.AddAsync(topicRequest);

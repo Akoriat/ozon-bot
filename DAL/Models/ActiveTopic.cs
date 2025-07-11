@@ -1,18 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+namespace DAL.Models;
 
-namespace DAL.Models
+public class ActiveTopic
 {
-    public class ActiveTopic
-    {
-        public int Id { get; set; }
-        public string RequestId { get; set; }
-        public string MessageThreadId { get; set; }
-        public string ParserName { get; set; }
-        public int AssistantType { get; set; }
-        public string? Article { get; set; }
-    }
+    public int Id { get; set; }
+    public string RequestId { get; set; } = string.Empty;
+    public string MessageThreadId { get; set; } = string.Empty;
+    public string ParserName { get; set; } = string.Empty;
+    public string AssistantType { get; set; } = string.Empty;
+    public string? Article { get; set; }
 }

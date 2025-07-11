@@ -139,8 +139,8 @@ public class TopicHostedService : ResilientBackgroundService
         var reviewText = reviewEntity.ReviewText;
 
         var assType = reviewEntity.Rating > 3 ?
-            AssistantType.ReviewGoodId :
-            AssistantType.ReviewBadId;
+            AssistantType.ReviewGood :
+            AssistantType.ReviewBad;
 
         var green = char.ConvertFromUtf32(0x1F7E2);
         var red = char.ConvertFromUtf32(0x1F534);
@@ -202,26 +202,23 @@ public class TopicHostedService : ResilientBackgroundService
             message = questionEntity.Question;
         }
 
-        var articlePartial = string.Join("", questionEntity.Article.Take(2).ToList());
-        var assType = articlePartial switch
+        var articlePartial = string.Join("", questionEntity.Article.Take(2)).ToUpper();
+        var candidate = AssistantType.Questions(articlePartial);
+        if (!_chatGptConfig.Assistants.ContainsKey(candidate))
         {
-            "BR" => AssistantType.QuestionsBrId,
-            "CH" => AssistantType.QuestionsChId,
-            "KR" => AssistantType.QuestionsKrId,
-            "DS" or "DN" => AssistantType.QuestionsDsOrDnId,
-            _ => AssistantType.QuestionsOthersId,
-        };
+            candidate = AssistantType.Questions_Others;
+        }
+        var assType = candidate;
 
         var yellow = char.ConvertFromUtf32(0x1F7E1);
 
-        string topicName = assType switch
+        string topicName = articlePartial switch
         {
-            AssistantType.QuestionsBrId => $"{yellow}ВБ_{questionEntity.Date},{questionEntity.Time}",
-            AssistantType.QuestionsChId => $"{yellow}ВЧ_{questionEntity.Date},{questionEntity.Time}",
-            AssistantType.QuestionsKrId => $"{yellow}ВК_{questionEntity.Date},{questionEntity.Time}",
-            AssistantType.QuestionsDsOrDnId => $"{yellow}ВД_{questionEntity.Date},{questionEntity.Time}",
-            AssistantType.QuestionsOthersId => $"{yellow}ВП_{questionEntity.Date},{questionEntity.Time}",
-            _ => throw new NotImplementedException(),
+            "BR" => $"{yellow}ВБ_{questionEntity.Date},{questionEntity.Time}",
+            "CH" => $"{yellow}ВЧ_{questionEntity.Date},{questionEntity.Time}",
+            "KR" => $"{yellow}ВК_{questionEntity.Date},{questionEntity.Time}",
+            "DS" or "DN" => $"{yellow}ВД_{questionEntity.Date},{questionEntity.Time}",
+            _ => $"{yellow}ВП_{questionEntity.Date},{questionEntity.Time}",
         };
 
         await _forumTopicService.CreateTopicForRequestAsync(new CreateTopicDto
@@ -275,7 +272,7 @@ Regex.Replace(src, @"^\s*•?\s*\d{1,2}:\d{2}\s*", "").Trim();
             ParserName = entry.ParserName,
             ClientName = chatEntity.Title,
             Product = "",
-            AssistantType = AssistantType.ChatGeneralId,
+            AssistantType = AssistantType.ChatGeneral,
             TopicName = TopicName,
             FullChat = cleanHistory
         }

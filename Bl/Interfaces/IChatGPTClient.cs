@@ -1,9 +1,6 @@
-﻿using Common.Enums;
+namespace Bl.Interfaces;
 
-namespace Bl.Interfaces
+public interface IChatGPTClient
 {
-    public interface IChatGPTClient
-    {
-        public Task<string> SendMessageAsync(string userMessage, AssistantType assistantType, CancellationToken ct = default);
-    }
+    Task<string> SendMessageAsync(string userMessage, string assistantType, CancellationToken ct = default);
 }

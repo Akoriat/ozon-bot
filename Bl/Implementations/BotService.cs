@@ -383,12 +383,7 @@ public class BotService : IBotService
 
         if (action == "toggle")
         {
-            if (!Enum.TryParse(payload, out AssistantType assistantType))
-            {
-                throw new Exception("Проверьте кнопку переключения статуса, передается не валидная строка");
-            }
-
-            await _assistantModeBl.ToggleModeAsync(assistantType, ct);
+            await _assistantModeBl.ToggleModeAsync(payload, ct);
 
             var updatedKeyboard = await BuildModeKeyboardAsync(ct);
             await _botClient.EditMessageReplyMarkup(
@@ -578,7 +573,7 @@ public class BotService : IBotService
                 cancellationToken: ct
             );
 
-            var gptAnswer = await _chatGPTClient.SendMessageAsync(messageForGpt, (AssistantType)topicRequest.AssistantType, ct);
+            var gptAnswer = await _chatGPTClient.SendMessageAsync(messageForGpt, topicRequest.AssistantType, ct);
             await _topicRequestBl.UpdateGptDraftAnswer(topicRequest.Id, gptAnswer);
 
             await _correctAnswerBl.AddAsync(new CorrectAnswer
@@ -648,7 +643,7 @@ public class BotService : IBotService
                 cancellationToken: ct
             );
 
-            var gptAnswer = await _chatGPTClient.SendMessageAsync(messageForGpt!, (AssistantType)topicRequest.AssistantType, ct);
+            var gptAnswer = await _chatGPTClient.SendMessageAsync(messageForGpt!, topicRequest.AssistantType, ct);
             await _topicRequestBl.UpdateGptDraftAnswer(topicRequest.Id, gptAnswer);
 
             await _correctAnswerBl.AddAsync(new CorrectAnswer
