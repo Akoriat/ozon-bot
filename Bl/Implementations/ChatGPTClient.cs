@@ -170,41 +170,40 @@ long Created_At);
         await AddUserMessageAsync(userMessage, threadId, correlationId, ct);
         Exception? lastError = null;
 
-            for (int attempt = 0; attempt < MaxRunRetries; attempt++)
+        for (int attempt = 0; attempt < MaxRunRetries; attempt++)
+        {
+            try
             {
-                try
-                {
 
-                    Console.WriteLine($"SendMessageAsync: CreateRunAsync: attempt: {attempt}");
-                    var run = await CreateRunAsync(assistantId, threadId, ct);
-                    if (run.Status == "incomplete")
-                    {
-                        Console.WriteLine($"Run {run.Id} incomplete: {run.Incomplete_Details?.Reason ?? "unknown"}");
-                        // При max_tokens попробуйте увеличить лимит, при content_filter — очистить/ослабить запрос
-                    }
-                    Console.WriteLine("SendMessageAsync: runner wait");
-                    await WaitRunAsync(threadId, run.Id, ct, abortAfterS: RunTimeoutSeconds);
-                    Console.WriteLine("SendMessageAsync: get answer");
-                    var response = await GetAssistantResponseAsync(threadId, run.Id, ct);
-                    return response;
-                }
-                catch (TimeoutException)
+                Console.WriteLine($"SendMessageAsync: CreateRunAsync: attempt: {attempt}");
+                var run = await CreateRunAsync(assistantId, threadId, ct);
+                if (run.Status == "incomplete")
                 {
-                    // отменяем зависший run и готовимся к ретраю
-                    _ = await TryCancelRunAsync(threadId, runId: "unknown", ct);  // runId можно передать из catch (см. ниже)
-                    lastError = new TimeoutException($"Run timed-out after {RunTimeoutSeconds}s");
+                    Console.WriteLine($"Run {run.Id} incomplete: {run.Incomplete_Details?.Reason ?? "unknown"}");
+                    // При max_tokens попробуйте увеличить лимит, при content_filter — очистить/ослабить запрос
                 }
-                catch (Exception ex) when (IsRetriable(ex))
-                {
-                    lastError = ex;   // сохраним для возможного rethrow
-                }
-
-                // экспоненциальный back-off: 2, 4, 8 сек …
-                var delay = TimeSpan.FromSeconds(Math.Pow(BackoffBaseSeconds, attempt + 1));
-                await Task.Delay(delay, ct);
+                Console.WriteLine("SendMessageAsync: runner wait");
+                await WaitRunAsync(threadId, run.Id, ct, abortAfterS: RunTimeoutSeconds);
+                Console.WriteLine("SendMessageAsync: get answer");
+                var response = await GetAssistantResponseAsync(threadId, run.Id, ct);
+                return response;
             }
-            throw lastError ?? new Exception("Run failed after retries");
+            catch (TimeoutException)
+            {
+                // отменяем зависший run и готовимся к ретраю
+                _ = await TryCancelRunAsync(threadId, runId: "unknown", ct);  // runId можно передать из catch (см. ниже)
+                lastError = new TimeoutException($"Run timed-out after {RunTimeoutSeconds}s");
+            }
+            catch (Exception ex) when (IsRetriable(ex))
+            {
+                lastError = ex;   // сохраним для возможного rethrow
+            }
+
+            // экспоненциальный back-off: 2, 4, 8 сек …
+            var delay = TimeSpan.FromSeconds(Math.Pow(BackoffBaseSeconds, attempt + 1));
+            await Task.Delay(delay, ct);
         }
+        throw lastError ?? new Exception("Run failed after retries");
     }
     private static bool IsRetriable(Exception ex)
         => ex is TimeoutException
