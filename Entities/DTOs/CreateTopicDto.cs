@@ -1,16 +1,14 @@
-﻿using Common.Enums;
-
 namespace Entities.DTOs;
 
 public class CreateTopicDto
 {
-    public string RequestId { get; set; }
-    public string UserQuestion { get; set; }
-    public string ParserName { get; set; }
-    public string ForChatGpt { get; set; }
-    public string ClientName { get; set; }
+    public string RequestId { get; set; } = string.Empty;
+    public string UserQuestion { get; set; } = string.Empty;
+    public string ParserName { get; set; } = string.Empty;
+    public string ForChatGpt { get; set; } = string.Empty;
+    public string ClientName { get; set; } = string.Empty;
     public string? Product { get; set; }
-    public AssistantType AssistantType { get; set; }
+    public string AssistantType { get; set; } = string.Empty;
     public string? Article { get; set; }
     public int? Rating { get; set; }
     public string? Photo { get; set; }

@@ -13,6 +13,9 @@ using System.Threading.Channels;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using LoggerConfiguration = Common.Configuration.LoggerConfiguration;
+using Entities;
+using Bl.Interfaces;
+using Microsoft.Extensions.Options;
 
 var configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
@@ -59,6 +62,17 @@ try
             services.AddSingleton<SeleniumGate>();
         })
         .Build();
+
+    // Инициализация ассистентов из конфига
+    using (var scope = host.Services.CreateScope())
+    {
+        var cfg = scope.ServiceProvider.GetRequiredService<IOptions<ChatGptConfig>>().Value;
+        var bl = scope.ServiceProvider.GetRequiredService<IAssistantDataBl>();
+        foreach (var kv in cfg.Assistants)
+        {
+            await bl.AddOrUpdateAsync(new AssistantData(kv.Key, kv.Value));
+        }
+    }
 
     await host.RunAsync();
 }

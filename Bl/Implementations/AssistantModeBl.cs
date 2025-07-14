@@ -1,5 +1,4 @@
-﻿using Bl.Interfaces;
-using Common.Enums;
+using Bl.Interfaces;
 using DAL.Interfaces;
 using DAL.Models;
 
@@ -18,8 +17,8 @@ public class AssistantModeBl : IAssistantModeBl
         return await _assistantModeDal.GetAllModesAsync(ct);
     }
 
-    public async Task<bool> ToggleModeAsync(AssistantType assistantType, CancellationToken ct)
+    public async Task<bool> ToggleModeAsync(string assistantName, CancellationToken ct)
     {
-        return await _assistantModeDal.ToggleModeAsync(assistantType.ToString(), ct);
+        return await _assistantModeDal.ToggleModeAsync(assistantName, ct);
     }
 }
